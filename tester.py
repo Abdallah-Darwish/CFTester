@@ -143,7 +143,8 @@ def cmd(args: argparse.Namespace) -> bool:
             slnFs.write(dbMan.ProblemSln.cfLoadProblemSln(args.problemId).source)
             print('Done downloading.')
             slnFs.flush()
-            stressTest(args.source, args.N, args.generator, f'problem{args.problemId}_{time.time_ns()}_FailedTestCase.txt', args.validator, slnPath)
+        stressTest(args.source, args.N, args.generator, f'problem{args.problemId}_{time.time_ns()}_FailedTestCase.txt', args.validator, slnPath)
+        os.remove(slnPath)
         return True
 
     if args.subparserName == 'stressTest':
