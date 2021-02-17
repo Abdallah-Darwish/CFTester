@@ -15,6 +15,8 @@ _sep = '!@#$%^&*()_ABCDEFG'
 class TestResult:
     __slots__ = 'input', 'output', 'answer', 'verdict', 'elapsed', 'comment', 'testId'
 
+    def __init__(self) -> None:
+        self.input, self.output, self.answer, self.verdict, self.elapsed, self.comment, self.testId = None, None, None, None, None, None, None
     @property
     def passed(self):
         return self.verdict == 'Accepted'
@@ -62,10 +64,11 @@ class TestResult:
             l.append(f'Test Id: {self.testId}') 
         l.append(f'verdict: {self.verdict}')
         l.append(f'elapsed: {self.elapsed}')
-        if self.verdict != None:
+        if self.passed != True:
             l.append(f'input:\n{self.input}') 
             l.append(f'output:\n{self.output}')
             l.append(f'answer:\n{self.answer}')
+            l.append(f'comment:\n{self.comment}')
         return '\n'.join(l)
     def __repr__(self):
         return self.__str__()
@@ -75,8 +78,7 @@ def testProblem(userId: str, sourcePath: str, cfTestsIds: List[int] = None, uTes
     exe = compiler.compile(abspath(sourcePath))
     if validatorPath != None:
         val = compiler.compile(abspath(validatorPath))
-        val.append(f'--seperator')
-        val.append(_sep)
+        val += ['--seperator', _sep]
     else:
         val = None
     
@@ -87,14 +89,16 @@ def testProblem(userId: str, sourcePath: str, cfTestsIds: List[int] = None, uTes
     failedTests = []
     maxElapsed: TestResult = None
     for t in ts.tests:
-        tr = TestResult.runTest(t.input, t.answer, exe, t.id, val, _sep)
+        tr = TestResult.runTest(t.input, t.answer, exe, t.id, val, _sep, '')
         if tr.passed == False:
             failedTests.append(tr)
         if maxElapsed == None or tr.elapsed > maxElapsed.elapsed: maxElapsed = tr
     print(f'Ran {len(ts.tests)} tests, {len(ts.tests) - len(failedTests)} {Fore.GREEN}passed{Fore.RESET} and {len(failedTests)} {Fore.RED}failed{Fore.RESET}')
     print(f'Max elapsed test is {maxElapsed.testId} and it took {maxElapsed.elapsed}ms')
     if len(failedTests) > 0:
-        print(f'{Fore.RED}Failed{Fore.RESET} tests ids are: {", ".join(str(t.testId) for t in failedTests)}')
+        print(f'{Fore.RED}Failed{Fore.RESET} tests are:')
+        for t in failedTests:
+            print(t)
 
 def stressTest(sourcePath: str, n: int, generatorPath: str, outputPath: str, validatorPath: str = None, solverPath: str = None):
     """generator must first print the test case, answer(can be empty) and additional info(can be empty) for the validator all seperated by argument --seperator
@@ -163,7 +167,8 @@ def cmd(args: argparse.Namespace) -> bool:
             return res
         cfTestsIds = splitTestsIds(args.cfTests) if args.cfTests else None
         uTestsIds  = splitTestsIds(args.uTests) if args.uTests else None
-        testProblem(args.problemId, args.source, cfTestsIds, uTestsIds)
+        val  = args.validator if args.validator else None
+        testProblem(args.problemId, args.source, cfTestsIds, uTestsIds, val)
         return True
     
     return False
@@ -174,17 +179,18 @@ def addParser(p: argparse._SubParsersAction):
     pCFStressTest.add_argument('N', help='Number of times to stress test your solution.', type=int)
     pCFStressTest.add_argument('source', help='Path to your solution file.')
     pCFStressTest.add_argument('generator', help='Path to your generator file, it must print the test case, answer(mostly empty), additional data for validator(can be empty) all seperated by argument --seperator.')
-    pCFStressTest.add_argument('--validator', help='Path to your validator file, it will receive test case, your solution answer, CF solution answer, additional data from generator(can be empty) all seperated by argument --seperator.')
+    pCFStressTest.add_argument('--validator', help='Path to your validator file, it will receive test case, your solution answer, CF solution answer, additional data from generator(can be empty) all seperated by argument --seperator.\nIts exit code should be 0 if answer is correct and non-zero otherwise also in case of not accepted STDOUT can contain a comment.')
 
     pStressTest = p.add_parser('stressTest', description='Stress test a non-CF problem, by feeding it your generator test case after that it will feed case and output to validator.')
     pStressTest.add_argument('problemId', help='Id of CF problem to stress test.')
     pStressTest.add_argument('N', help='Number of times to stress test your solution.', type=int)
     pStressTest.add_argument('source', help='Path to your solution file.')
     pStressTest.add_argument('generator', help='Path to your generator file, it must print the test case, answer(can\'t be empty unless you provided a validator), additional data for validator(can be empty) all seperated by argument --seperator.')
-    pStressTest.add_argument('--validator', help='Path to your validator file, it will receive test case, your solution answer, generator answer(can be empty), additional data from generator(can be empty) all seperated by argument --seperator.')
+    pStressTest.add_argument('--validator', help='Path to your validator file, it will receive test case, your solution answer, generator answer(can be empty), additional data from generator(can be empty) all seperated by argument --seperator.\nIts exit code should be 0 if answer is correct and non-zero otherwise.')
 
     pTest = p.add_parser('test', description='Runs a group of saved tests in the db against your solution.')
     pTest.add_argument('problemId', help='Id of the problem to test.')
     pTest.add_argument('source', help='Path to your solution file.')
     pTest.add_argument('--cfTests', help="Numbers of CF tests you want to run seperated by a comma and can include ranges and non-existing tasks numbers, ex: 1,2,4-6,10,13. If omitted then all will be tested.")
     pTest.add_argument('--uTests', help="Numbers of User tests you want to run seperated by a comma and can include ranges and non-existing tasks numbers, ex: 1,2,4-6,10,13. If omitted then all will be tested.")
+    pTest.add_argument('--validator', help='Path to your validator file, it will receive test case, your solution answer, expected answer, additional data(empty for now) all seperated by argument --seperator.\nIts exit code should be 0 if answer is correct and non-zero otherwise.')

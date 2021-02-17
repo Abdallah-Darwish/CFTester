@@ -5,15 +5,16 @@ import os
 import time
 import random
 import subprocess
+import errno
 tmp = os.path.join(os.getcwd(), 'TempBinaries\\')
 if os.path.exists(tmp) == False:
     os.mkdir(tmp)
 def compile(srcPath: str) -> list:
     "returns exe path and args that you must pass to exe"
     if os.path.exists(srcPath) == False:
-        raise CriticalException(f"Can't find file: {srcPath}")
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), srcPath)
     if os.path.isfile(srcPath) == False:
-        raise CriticalException(f"Path {srcPath} isn't a file")
+        raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), srcPath)
     ext = os.path.splitext(srcPath)[1].lower()
     if ext == '.exe': return [srcPath]
     if ext == '.cpp': 
