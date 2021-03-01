@@ -43,6 +43,11 @@ CREATE TABLE ProblemSln (
     problemId INTEGER NOT NULL PRIMARY KEY REFERENCES Problem(id),
     source TEXT NOT NULL
 );
+
+CREATE TABLE Executable (
+    sourceHash TEXT NOT NULL PRIMARY KEY,
+    path TEXT NOT NULL
+);
         """)
 
 
