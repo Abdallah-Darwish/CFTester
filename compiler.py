@@ -6,20 +6,26 @@ import time
 import random
 import subprocess
 import errno
+import platform
 tmp = os.path.join(os.getcwd(), 'TempBinaries\\')
+
 if os.path.exists(tmp) == False:
     os.mkdir(tmp)
+
 def compile(srcPath: str) -> list:
     "returns exe path and args that you must pass to exe"
+    gppCompiler = r'g++'
+    if platform.os == 'Windows':
+        gppCompiler = r'C:\MinGW\bin\g++.exe'
     if os.path.exists(srcPath) == False:
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), srcPath)
     if os.path.isfile(srcPath) == False:
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), srcPath)
     ext = os.path.splitext(srcPath)[1].lower()
     if ext == '.exe': return [srcPath]
-    if ext == '.cpp': 
+    if ext == '.cpp':
         exe = os.path.join(tmp, f'{time.time_ns()}xyz{random.randint(1, 9999999)}.exe')
-        args = [r'C:\MinGW\bin\g++.exe',  srcPath , '-static',  '-DONLINE_JUDGE', '-Wl,--stack=268435456', '-O2', '-std=c++17' ,'-o', exe]
+        args = [gppCompiler,  srcPath , '-static',  '-DONLINE_JUDGE', '-Wl,--stack=268435456', '-O2', '-std=c++17' ,'-o', exe]
         p = subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         if p.returncode != 0:
             print(p.stdout)
@@ -48,4 +54,4 @@ def splitOnLine(sep:str, ipt: str = None, minLen = 0) -> List[str]:
     if len(res) < sepCnt + 1: res.extend([''] * ((sepCnt + 1)- len(res)))
     if len(res) < minLen: res.extend([''] * (minLen - len(res)))
     return res
-    
+
