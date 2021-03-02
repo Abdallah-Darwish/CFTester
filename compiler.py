@@ -36,7 +36,7 @@ def _compile_new_source(srcPath: str, srcHash: str) -> List[str]:
                 projectPath = os.path.join(
                     tempBinariesDirectory, 'CSharpProjects', projectName)
                 if os.path.exists(projectPath) == False:
-                    if subprocess.run(['dotnet', 'new', 'console', '-o', projectPath]).returncode != 0:
+                    if subprocess.run(['dotnet', 'new', 'console', '-o', projectPath], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).returncode != 0:
                         raise CriticalException(f"Couldn't create a new C# project at '{projectPath}'.")
                     break
                 lockPath = os.path.join(projectPath, lockFileName)
@@ -55,15 +55,16 @@ def _compile_new_source(srcPath: str, srcHash: str) -> List[str]:
         csprojPath = os.path.join(projectPath, f'{projectName}.csproj')
         outputDir = os.path.join(
             tempBinariesDirectory, f'{time.time_ns()}xyz{random.randint(1, 9999999)}')
-        if subprocess.run(['dotnet', 'build', '-c', 'Release', '-f', DOTNET_FRAMEWORK, '-o', outputDir, csprojPath]).returncode != 0:
+        if subprocess.run(['dotnet', 'build', '-c', 'Release', '-f', DOTNET_FRAMEWORK, '-o', outputDir, csprojPath], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).returncode != 0:
             os.remove(lockPath)
             raise CriticalException(f"Couldn't build project '{projectPath}'.")
         os.remove(lockPath)
         exe = os.path.join(outputDir, f'{projectName}.exe')
-    
+
     with dbMan.getConnection() as con:
-        con.execute('INSERT INTO Executable (sourceHash, path) VALUES (:sourceHash, :path);', {'sourceHash' : srcHash, 'path' : exe})
+        con.execute('INSERT INTO Executable (sourceHash, path) VALUES (:sourceHash, :path);', {'sourceHash': srcHash, 'path': exe})
     return [exe]
+
 
 def compile(srcPath: str) -> List[str]:
     "returns exe path and args that you must pass to exe"
@@ -87,5 +88,5 @@ def compile(srcPath: str) -> List[str]:
             if os.path.exists(exe['path']):
                 return [exe['path']]
             con.execute('DELETE FROM Executable WHERE sourceHash = :srcHash', {'srcHash': srcHash})
-    
+
     return _compile_new_source(srcPath, srcHash)
