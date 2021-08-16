@@ -12,11 +12,14 @@ from CriticalExceptionM import CriticalException
 import colorama
 from colorama import Fore, Style
 _sep = '!@#$%^&*()_ABCDEFG'
+
+
 class TestResult:
     __slots__ = 'input', 'output', 'answer', 'verdict', 'elapsed', 'comment', 'testId'
 
     def __init__(self) -> None:
         self.input, self.output, self.answer, self.verdict, self.elapsed, self.comment, self.testId = None, None, None, None, None, None, None
+
     @property
     def passed(self):
         return self.verdict == 'Accepted'
@@ -34,7 +37,7 @@ class TestResult:
         validator = None if validator == None else list(validator)
         try:
             res.elapsed = time.time_ns()
-            proc = subprocess.run(exe, text=True, input=input, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout = 5, check=True)
+            proc = subprocess.run(exe, text=True, input=input, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=5, check=True)
         except subprocess.TimeoutExpired:
             res.elapsed = time.time_ns() - res.elapsed
             res.verdict = 'Timedout'
@@ -61,17 +64,19 @@ class TestResult:
     def __str__(self):
         l = []
         if self.testId != None:
-            l.append(f'Test Id: {self.testId}') 
+            l.append(f'Test Id: {self.testId}')
         l.append(f'verdict: {self.verdict}')
         l.append(f'elapsed: {self.elapsed}')
         if self.passed != True:
-            l.append(f'input:\n{self.input}') 
+            l.append(f'input:\n{self.input}')
             l.append(f'output:\n{self.output}')
             l.append(f'answer:\n{self.answer}')
             l.append(f'comment:\n{self.comment}')
         return '\n'.join(l)
+
     def __repr__(self):
         return self.__str__()
+
 
 def testProblem(userId: str, sourcePath: str, cfTestsIds: List[int] = None, uTestsIds: List[int] = None, validatorPath: str = None) -> None:
     prob = dbMan.Problem.getByUserId(userId)
@@ -81,7 +86,7 @@ def testProblem(userId: str, sourcePath: str, cfTestsIds: List[int] = None, uTes
         val += ['--seperator', _sep]
     else:
         val = None
-    
+
     ts = dbMan.TestSet(prob.id, cfTestsIds, uTestsIds)
     if len(ts.tests) == 0:
         print(f'{Fore.RED}No tests where found{Fore.RESET}')
@@ -92,13 +97,15 @@ def testProblem(userId: str, sourcePath: str, cfTestsIds: List[int] = None, uTes
         tr = TestResult.runTest(t.input, t.answer, exe, t.id, val, _sep, '')
         if tr.passed == False:
             failedTests.append(tr)
-        if maxElapsed == None or tr.elapsed > maxElapsed.elapsed: maxElapsed = tr
+        if maxElapsed == None or tr.elapsed > maxElapsed.elapsed:
+            maxElapsed = tr
     print(f'Ran {len(ts.tests)} tests, {len(ts.tests) - len(failedTests)} {Fore.GREEN}passed{Fore.RESET} and {len(failedTests)} {Fore.RED}failed{Fore.RESET}')
     print(f'Max elapsed test is {maxElapsed.testId} and it took {maxElapsed.elapsed}ms')
     if len(failedTests) > 0:
         print(f'{Fore.RED}Failed{Fore.RESET} tests are:')
         for t in failedTests:
             print(t)
+
 
 def stressTest(sourcePath: str, n: int, generatorPath: str, outputPath: str, validatorPath: str = None, solverPath: str = None):
     """generator must first print the test case, answer(can be empty) and additional info(can be empty) for the validator all seperated by argument --seperator
@@ -113,35 +120,39 @@ def stressTest(sourcePath: str, n: int, generatorPath: str, outputPath: str, val
         val.append(_sep)
     else:
         val = None
-    
+
     sol = None if solverPath == None else compiler.compile(abspath(solverPath))
 
     allGood = True
     maxElapsed: TestResult = None
     for i in range(1, n + 1):
-        print(f'Test case #{i}: ',end='')
+        print(f'Test case #{i}: ', end='')
         genProc = subprocess.run(gen, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
         gpo = compiler.splitOnLine(_sep, genProc.stdout, 3)
         sln = gpo[1] if sol == None else subprocess.run(sol, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True, input=gpo[0]).stdout.strip()
         t = TestResult.runTest(gpo[0], sln, exe, validator=val, validatorSep=_sep, validatorAdditionalData=gpo[2])
         if t.passed == False:
             with open(outputPath, 'a+') as opt:
-                opt.write(('#' * 150) + '\n')
-                opt.write(str(t))
-                opt.write('\n' + ('#' * 150))
+                opt.write(f"{'#' * 150}\n")
+                opt.write(f"{t}\n")
+                opt.write(f"{'#' * 150}")
             print(f'{Fore.RED}Failed{Fore.RESET}, see file {outputPath} for additional info')
             allGood = False
             break
-        if maxElapsed == None or t.elapsed > maxElapsed.elapsed: maxElapsed = t
+        if maxElapsed == None or t.elapsed > maxElapsed.elapsed:
+            maxElapsed = t
         print(f'{Fore.GREEN}Passed{Fore.RESET}')
-    if allGood == False: return
+    if allGood == False:
+        return
     print(f'Ran {n} tests {Fore.GREEN}successfully{Fore.RESET}')
     print(f'Max elapsed test took {maxElapsed.elapsed}ms')
 
+
 def cmd(args: argparse.Namespace) -> bool:
     if args.subparserName == 'cfStressTest':
-        if args.N <= 0: return True
-        slnPath = os.path.join(compiler.tmp,f'problem{args.problemId}_{time.time_ns()}solution.cpp')
+        if args.N <= 0:
+            return True
+        slnPath = os.path.join(compiler.tempBinariesDirectory, f'problem{args.problemId}_{time.time_ns()}solution.cpp')
         with open(slnPath, 'w+') as slnFs:
             print('Downloading problem solution.')
             slnFs.write(dbMan.ProblemSln.cfLoadProblemSln(args.problemId).source)
@@ -152,26 +163,29 @@ def cmd(args: argparse.Namespace) -> bool:
         return True
 
     if args.subparserName == 'stressTest':
-        if args.N <= 0: return True
+        if args.N <= 0:
+            return True
         stressTest(args.source, args.N, args.generator, f'problem{args.problemId}_{time.time_ns()}_FailedTestCase.txt', args.validator, _sep)
         return True
-    
+
     if args.subparserName == 'test':
         def splitTestsIds(strList: str) -> List[int]:
             res = []
             for i in (i.strip() for i in strList.split(',')):
-                if ''.find('-') == -1: res.append(int(i))
+                if ''.find('-') == -1:
+                    res.append(int(i))
                 else:
                     s, e = [int(j.strip()) for j in i.split('-')]
                     res.extend(range(s, e + 1))
             return res
         cfTestsIds = splitTestsIds(args.cfTests) if args.cfTests else None
-        uTestsIds  = splitTestsIds(args.uTests) if args.uTests else None
-        val  = args.validator if args.validator else None
+        uTestsIds = splitTestsIds(args.uTests) if args.uTests else None
+        val = args.validator if args.validator else None
         testProblem(args.problemId, args.source, cfTestsIds, uTestsIds, val)
         return True
-    
+
     return False
+
 
 def addParser(p: argparse._SubParsersAction):
     pCFStressTest = p.add_parser('cfStressTest', description='Stress test a CF problem, by downloading any cpp solution then feeding it your generator test case after that it will compare CF solution to your\'s.')

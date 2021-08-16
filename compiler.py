@@ -11,10 +11,12 @@ import shutil
 import multiprocessing
 
 
-tempBinariesDirectory = os.path.join(os.getcwd(), 'TempBinaries\\')
-gppCompiler = os.path.abspath('g++')
+tempBinariesDirectory = os.path.join(os.getcwd(), 'TempBinaries')
+gppCompiler = 'g++'
 lockFileName = 'TesterLock.lck'
 
+if os.path.exists(tempBinariesDirectory) == False:
+    os.mkdir(tempBinariesDirectory)
 
 def _compile_new_source(srcPath: str, srcHash: str) -> List[str]:
     "Compiles C# or C++ source code and adds it to the db."
@@ -22,9 +24,10 @@ def _compile_new_source(srcPath: str, srcHash: str) -> List[str]:
     exe = ''
     if ext == '.cpp':
         exe = os.path.join(tempBinariesDirectory, f'{time.time_ns()}xyz{random.randint(1, 9999999)}.exe')
-        args = [gppCompiler,  srcPath, '-static',  '-DONLINE_JUDGE', '-Wl,--stack=268435456', '-O2', '-std=c++17', '-o', exe]
+        args = [gppCompiler,  srcPath, '-static',  '-DONLINE_JUDGE', '-O2', '-std=c++17', '-o', exe]
         p = subprocess.run(
             args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        print(p.stdout)
         if p.returncode != 0:
             raise CriticalException(f"Couldn't compile file {srcPath} successfully")
     elif ext == '.cs' or ext == '.csx':
@@ -90,3 +93,22 @@ def compile(srcPath: str) -> List[str]:
             con.execute('DELETE FROM Executable WHERE sourceHash = :srcHash', {'srcHash': srcHash})
 
     return _compile_new_source(srcPath, srcHash)
+
+def splitOnLine(sep:str, ipt: str = None, minLen = 0) -> List[str]:
+    if ipt == None:
+        ipt = sys.stdin.read()
+    ipt = ipt.splitlines(keepends=False)
+    res = []
+    cstr = ''
+    sepCnt = 0
+    for ln in ipt:
+        if ln == sep:
+            res.append(cstr.strip())
+            cstr = ''
+        else:
+            if len(cstr) > 0: cstr += '\n'
+            cstr += ln
+    if cstr != '': res.append(cstr.strip())
+    if len(res) < sepCnt + 1: res.extend([''] * ((sepCnt + 1)- len(res)))
+    if len(res) < minLen: res.extend([''] * (minLen - len(res)))
+    return res
