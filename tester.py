@@ -65,13 +65,13 @@ class TestResult:
         l = []
         if self.testId != None:
             l.append(f'Test Id: {self.testId}')
-        l.append(f'verdict: {self.verdict}')
-        l.append(f'elapsed: {self.elapsed}')
+        l.append(f'Verdict: {self.verdict}')
+        l.append(f'Elapsed: {self.elapsed}')
         if self.passed != True:
-            l.append(f'input:\n{self.input}')
-            l.append(f'output:\n{self.output}')
-            l.append(f'answer:\n{self.answer}')
-            l.append(f'comment:\n{self.comment}')
+            l.append(f'Input:\n{self.input}')
+            l.append(f'Output:\n{self.output}')
+            l.append(f'Answer:\n{self.answer}')
+            l.append(f'Comment:\n{self.comment}')
         return '\n'.join(l)
 
     def __repr__(self):
