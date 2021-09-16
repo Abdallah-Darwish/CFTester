@@ -98,10 +98,8 @@ class Problem:
             f'https://codeforces.com/api/contest.standings?contestId={contestId}&from=1&count=1&showUnofficial=false').json()['result']['problems']
         res = []
         for p in probs:
-            res.append(Problem.addProblem(
-                f'{problemUserIdPrefix}{p["index"]}', contestId, p["index"]))
-        logging.info(
-            f'Added {len(res)} problems from contest {contestId} to db.')
+            res.append(Problem.addProblem(f'{problemUserIdPrefix}{p["index"]}', contestId, p["index"]))
+        logging.info(f'Added {len(res)} problems from contest {contestId} to db.')
         return res
 
 
@@ -333,24 +331,23 @@ def cmd(args: argparse.Namespace) -> bool:
         Problem.addProblem(args.problemid, None, None)
         return True
     if args.subparserName == 'cfAddProblem':
-        url = args.url.split('/')
-        x = []
-        contestId = int(url[url.index('contest') + 1])
-        problemIdx = None if url.count(
-            'problem') == 0 else url[url.index('problem') + 1]
-        if problemIdx == None:
-            probs = Problem.cfAddContest(contestId, args.contestId)
-            print(
-                f'Added {len(probs)} with ids: {", ".join(p.id for p in probs)}')
-        else:
-            uid = args.problemId if args.problemId else f'{contestId}{problemIdx}'
-            Problem.addProblem(uid, contestId, problemIdx)
-            print(f'Added 1 problem with id = {uid}')
-        return True
+        try:
+            url = args.url.split('/')
+            contestId = int(url[url.index('contest') + 1])
+            problemIdx = None if url.count('problem') == 0 else url[url.index('problem') + 1]
+            if problemIdx == None:
+                probs = Problem.cfAddContest(contestId, args.contestId)
+                print(f'Added {len(probs)} with ids: {", ".join(p.id for p in probs)}')
+            else:
+                uid = args.problemId if args.problemId else f'{contestId}{problemIdx}'
+                Problem.addProblem(uid, contestId, problemIdx)
+                print(f'Added 1 problem with id = {uid}')
+            return True
+        except ValueError:
+            raise CriticalException('Invalid contest or problem URL, the URL must contain problem or contest keywords')
     if args.subparserName == 'cfLoadTestset':
         if args.problemId:
-            print(
-                f'Loaded {TestSet.cfLoadTestSet(args.problemId, args.transformer)} tests')
+            print(f'Loaded {TestSet.cfLoadTestSet(args.problemId, args.transformer)} tests')
         else:
             probs = Problem.getByContestId(int(args.contestId))
             for p in probs:
