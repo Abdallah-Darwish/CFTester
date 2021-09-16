@@ -9,7 +9,6 @@ import hashlib
 import dbMan
 import shutil
 import multiprocessing
-import sys
 
 tempBinariesDirectory = os.path.join(os.getcwd(), 'TempBinaries')
 gppCompiler = 'g++'
@@ -18,6 +17,7 @@ lockFileName = 'TesterLock.lck'
 if os.path.exists(tempBinariesDirectory) == False:
     os.mkdir(tempBinariesDirectory)
 
+
 def _compile_new_source(srcPath: str, srcHash: str) -> List[str]:
     "Compiles C# or C++ source code and adds it to the db."
     ext = os.path.splitext(srcPath)[1].lower()
@@ -25,8 +25,7 @@ def _compile_new_source(srcPath: str, srcHash: str) -> List[str]:
     if ext == '.cpp':
         exe = os.path.join(tempBinariesDirectory, f'{time.time_ns()}xyz{random.randint(1, 9999999)}.exe')
         args = [gppCompiler,  srcPath, '-static',  '-DONLINE_JUDGE', '-O2', '-std=c++17', '-o', exe]
-        p = subprocess.run(
-            args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        p = subprocess.run(args, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         print(p.stdout)
         if p.returncode != 0:
             raise CriticalException(f"Couldn't compile file {srcPath} successfully")
@@ -57,7 +56,7 @@ def _compile_new_source(srcPath: str, srcHash: str) -> List[str]:
         csprojPath = os.path.join(projectPath, f'{projectName}.csproj')
         outputDir = os.path.join(tempBinariesDirectory, f'{time.time_ns()}xyz{random.randint(1, 9999999)}')
         if subprocess.run(['dotnet', 'build', '-c', 'Release', '-f', DOTNET_FRAMEWORK, '-o', outputDir, csprojPath],
-                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).returncode != 0:
+                          text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).returncode != 0:
             os.remove(lockPath)
             raise CriticalException(f"Couldn't build project '{projectPath}'.")
         os.remove(lockPath)

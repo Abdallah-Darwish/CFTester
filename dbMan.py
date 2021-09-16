@@ -56,19 +56,15 @@ class Problem:
 
     def __init__(self, id: int):
         with getConnection() as con:
-            r = con.execute(
-                'SELECT * FROM Problem WHERE id = :id', {'id': id}).fetchone()
-            self.id, self.userId, self.contestId, self.problemIdx = id, r[
-                'userId'], r['contestId'], r['problemIdx']
+            r = con.execute('SELECT * FROM Problem WHERE id = :id', {'id': id}).fetchone()
+            self.id, self.userId, self.contestId, self.problemIdx = id, r['userId'], r['contestId'], r['problemIdx']
 
     @staticmethod
     def getByUserId(userId: str):
         with getConnection() as con:
-            r = con.execute('SELECT id FROM Problem WHERE userId = :uid', {
-                            'uid': userId}).fetchone()
+            r = con.execute('SELECT id FROM Problem WHERE userId = :uid', {'uid': userId}).fetchone()
             if r == None:
-                logging.warning(
-                    f'Tried to retrive a non-existing problem with id: {userId}.')
+                logging.warning(f'Tried to retrive a non-existing problem with id: {userId}.')
                 return None
             return Problem(r['id'])
 
@@ -92,10 +88,8 @@ class Problem:
     def cfAddContest(contestId: int, problemUserIdPrefix: str = None) -> list:
         if problemUserIdPrefix == None:
             problemUserIdPrefix = str(contestId)
-            logging.info(
-                'No problem id orefix was supplied so will use contest id instead.')
-        probs = cfSession.get(
-            f'https://codeforces.com/api/contest.standings?contestId={contestId}&from=1&count=1&showUnofficial=false').json()['result']['problems']
+            logging.info('No problem id orefix was supplied so will use contest id instead.')
+        probs = cfSession.get(f'https://codeforces.com/api/contest.standings?contestId={contestId}&from=1&count=1&showUnofficial=false').json()['result']['problems']
         res = []
         for p in probs:
             res.append(Problem.addProblem(f'{problemUserIdPrefix}{p["index"]}', contestId, p["index"]))
@@ -108,19 +102,16 @@ class Test:
     __slots__ = ('problemId', 'id', 'input', 'answer')
 
     def __init__(self, r: sqlite3.Row):
-        self.problemId, self.id, self.input, self.answer = r[
-            'problemId'], r['id'], r['input'], r['answer']
+        self.problemId, self.id, self.input, self.answer = r['problemId'], r['id'], r['input'], r['answer']
 
 
 def _findAcceptedSub(contestId: int, problemIdx: str, contestStands: dict) -> int:
     'Return id of a C++ accepted submission to the problem'
     problemIdx = problemIdx.upper()
     probs = contestStands['problems']
-    propOffset = next((i for i in range(len(probs))
-                       if probs[i]['index'].upper() == problemIdx), -1)
+    propOffset = next((i for i in range(len(probs)) if probs[i]['index'].upper() == problemIdx), -1)
     if propOffset == -1:
-        raise CriticalException(
-            f"Can't find problem {problemIdx} in contest {contestId}")
+        raise CriticalException(f"Can't find problem {problemIdx} in contest {contestId}")
     probSolvers = [s['party']['members'][0]['handle']
                    for s in contestStands['rows'] if s['problemResults'][propOffset]['points'] > 0]
 
@@ -132,11 +123,9 @@ def _findAcceptedSub(contestId: int, problemIdx: str, contestStands: dict) -> in
     for h in probSolvers:
         subId = tryFindAcceptedSub(h)
         if subId != -1:
-            logging.info(
-                f'Found a C++ accepted submission for problem {contestId}/{problemIdx} from user {h} with id: {subId}.')
+            logging.info(f'Found a C++ accepted submission for problem {contestId}/{problemIdx} from user {h} with id: {subId}.')
             return subId
-    raise CriticalException(
-        f"Can't find any C++ accepted submission for problem {problemIdx} in contest {contestId}")
+    raise CriticalException(f"Can't find any C++ accepted submission for problem {problemIdx} in contest {contestId}")
 
 
 class TestSet:
@@ -146,8 +135,7 @@ class TestSet:
         self.problemId, self.tests = pid, []
         with getConnection() as con:
             # get members
-            c = con.execute(
-                'SELECT * FROM Problem WHERE id = :pid', {'pid': pid})
+            c = con.execute('SELECT * FROM Problem WHERE id = :pid', {'pid': pid})
             data = c.fetchone()
             if data == None:
                 raise CriticalException(f'There is no problem with id: {pid} in db.')
@@ -157,13 +145,11 @@ class TestSet:
             # get tests
             cfTestsIdsCondition = "id LIKE 'CF%'" if cfTestsIds == None else '1 = 0'
             if cfTestsIds != None and len(cfTestsIds) > 0:
-                cfTestsIdsCondition = 'id IN (' + \
-                    ', '.join(f"'CF{i}'" for i in cfTestsIds) + ')'
+                cfTestsIdsCondition = 'id IN (' + ', '.join(f"'CF{i}'" for i in cfTestsIds) + ')'
 
             uTestsIdsCondition = "id LIKE 'U%'" if uTestsIds == None else '1 = 0'
             if uTestsIds != None and len(uTestsIds) > 0:
-                uTestsIdsCondition = 'id IN (' + \
-                    ', '.join(f"'U{i}'" for i in uTestsIds) + ')'
+                uTestsIdsCondition = 'id IN (' + ', '.join(f"'U{i}'" for i in uTestsIds) + ')'
 
             testsQuery = f'SELECT * FROM Test WHERE problemId = :pid AND ({cfTestsIdsCondition} OR {uTestsIdsCondition})'
             c = con.execute(testsQuery, {'pid': pid})
@@ -176,8 +162,7 @@ class TestSet:
         trans will receive each test case input and output seperated by transSep and its supposed to print the same.
         Also, If input or ouput are empty then the case won't be saved.
         """
-        bs = bs4.BeautifulSoup(cfSession.get(
-            f'https://codeforces.com/contest/{contestId}/submission/{subId}').text, 'lxml')
+        bs = bs4.BeautifulSoup(cfSession.get(f'https://codeforces.com/contest/{contestId}/submission/{subId}').text, 'lxml')
 
         xcsrf = bs.select_one('meta[name="X-Csrf-Token"]').get('content')
         d = cfSession.post('https://codeforces.com/data/submitSource',
@@ -189,15 +174,13 @@ class TestSet:
         cnt = 0
         with getConnection() as con:
             for i in range(1, int(d['testCount']) + 1):
-                ipt, opt = d[f'input#{i}'].replace('\r\n', '\n').strip(
-                ), d[f'answer#{i}'].replace('\r\n', '\n').strip()
+                ipt, opt = d[f'input#{i}'].replace('\r\n', '\n').strip(), d[f'answer#{i}'].replace('\r\n', '\n').strip()
                 if trans != None:
                     transInput = f'{ipt}\n{transSep}\n{opt}'
                     try:
                         ipt, opt = subprocess.run(trans, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True, input=transInput).stdout.split(transSep)
                     except subprocess.CalledProcessError as er:
-                        raise CriticalException(
-                            'Case transformer exited with non-zero code.')
+                        raise CriticalException('Case transformer exited with non-zero code.')
                 elif ipt.endswith('...') or opt.endswith('...'):
                     ipt, opt = None, None
                 if ipt != None and (str.isspace(ipt) == False and len(ipt) > 0) and opt != None and (str.isspace(opt) == False and len(opt) > 0):
@@ -209,8 +192,7 @@ class TestSet:
 
     @staticmethod
     def _parseAndStoreProblemSamples(contestId: int, probIdx: int, problemId: int) -> int:
-        bs = bs4.BeautifulSoup(cfSession.get(
-            f'https://codeforces.com/contest/{contestId}/problem/{probIdx}').text, 'lxml')
+        bs = bs4.BeautifulSoup(cfSession.get(f'https://codeforces.com/contest/{contestId}/problem/{probIdx}').text, 'lxml')
 
         samplesDiv: bs4.Tag = bs.select_one('div.sample-tests')
         inputs = samplesDiv.select('div.input>pre')
@@ -224,17 +206,14 @@ class TestSet:
     @staticmethod
     def cfLoadTestSet(userId: str, transformerPath: str = None) -> int:
         with getConnection() as con:
-            r = con.execute('SELECT id, contestId, problemIdx FROM Problem WHERE userId = :userId', {
-                            'userId': userId}).fetchone()
+            r = con.execute('SELECT id, contestId, problemIdx FROM Problem WHERE userId = :userId', {'userId': userId}).fetchone()
             pid, contestId, problemIdx = None, None, None
             if r != None:
                 pid, contestId, problemIdx = r[0], r[1], r[2]
-                con.execute(
-                    "DELETE FROM Test WHERE problemId = :pid AND id LIKE 'CF%'", {'pid': pid})
+                con.execute("DELETE FROM Test WHERE problemId = :pid AND id LIKE 'CF%'", {'pid': pid})
                 con.commit()
             else:
-                raise CriticalException(
-                    f'There is no problem with id: {userId} in db.')
+                raise CriticalException(f'There is no problem with id: {userId} in db.')
             stands = cfSession.get(
                 f'https://codeforces.com/api/contest.standings?contestId={contestId}&from=1&count=10&showUnofficial=true').json()['result']
             loadSamples = stands['contest']['phase'].lower() != 'finished'
@@ -243,8 +222,7 @@ class TestSet:
                 if acc != None:
                     con.commit()
                     if transformerPath != None:
-                        trans, transSep = compiler.compile(
-                            transformerPath), '!@#$%^&*()_'
+                        trans, transSep = compiler.compile(transformerPath), '!@#$%^&*()_'
                         trans.append('--seperator')
                         trans.append(transSep)
                     else:
@@ -262,18 +240,17 @@ class TestSet:
     def loadTestSet(userId: str, tests: List[Tuple[str, str]]) -> Tuple[str, str]:
         'tests : [(ipt, opt)]'
         with getConnection() as con:
-            r = con.execute('SELECT id FROM Problem WHERE userId = :userId', {
-                            'userId': userId}).fetchone()
+            r = con.execute('SELECT id FROM Problem WHERE userId = :userId', {'userId': userId}).fetchone()
             if r == None:
                 raise CriticalException(f'There is no problem with id: {userId} in db.')
             pid = r[0]
-            r = con.execute("SELECT max(CAST(SUBSTR(id, 2) AS INTEGER)) FROM Test WHERE problemId = :pid AND id LIKE 'U%'", {
-                            'pid': pid}).fetchone()
+            r = con.execute("SELECT max(CAST(SUBSTR(id, 2) AS INTEGER)) FROM Test WHERE problemId = :pid AND id LIKE 'U%'",
+                            {'pid': pid}).fetchone()
             i = 1 if r == None else (r[0] + 1)
             i0 = i
             for t in tests:
-                con.execute('INSERT INTO TEST(problemId, id, input, answer) VALUES(:pid, :id, :ipt, :ans)', {
-                            'pid': pid, 'id': f'U{i}', 'ipt': t[0], 'ans': t[1]})
+                con.execute('INSERT INTO TEST(problemId, id, input, answer) VALUES(:pid, :id, :ipt, :ans)',
+                            {'pid': pid, 'id': f'U{i}', 'ipt': t[0], 'ans': t[1]})
                 i += 1
             return (f'U{i0}', f'U{i - 1}')
 
@@ -283,14 +260,12 @@ class ProblemSln:
 
     def __init__(self, pid: int):
         with getConnection() as con:
-            r = con.execute('SELECT source FROM ProblemSln WHERE problemId = :pid', {
-                            'pid': pid}).fetchone()
+            r = con.execute('SELECT source FROM ProblemSln WHERE problemId = :pid', {'pid': pid}).fetchone()
             self.problemId, self.source = pid, r[0]
 
     @staticmethod
     def _parseAndstoreSubmissionSln(contestId: int, subId: int, problemId: int) -> None:
-        bs = bs4.BeautifulSoup(cfSession.get(
-            f'https://codeforces.com/contest/{contestId}/submission/{subId}').text, 'lxml')
+        bs = bs4.BeautifulSoup(cfSession.get(f'https://codeforces.com/contest/{contestId}/submission/{subId}').text, 'lxml')
 
         xcsrf = bs.select_one('meta[name="X-Csrf-Token"]').get('content')
         d = cfSession.post('https://codeforces.com/data/submitSource',
@@ -306,21 +281,19 @@ class ProblemSln:
     @staticmethod
     def cfLoadProblemSln(userId: str):
         with getConnection() as con:
-            r = con.execute('SELECT id, contestId, problemIdx FROM Problem WHERE userId = :userId', {
-                            'userId': userId}).fetchone()
+            r = con.execute('SELECT id, contestId, problemIdx FROM Problem WHERE userId = :userId',
+                            {'userId': userId}).fetchone()
             pid, contestId, problemIdx = None, None, None
             if r != None:
                 pid, contestId, problemIdx = r[0], r[1], r[2]
                 if con.execute('SELECT problemId FROM ProblemSln WHERE problemId = :pid', {'pid': pid}).fetchone() != None:
                     return ProblemSln(pid)
             else:
-                raise CriticalException(
-                    f'There is no problem with Id = {userId}')
+                raise CriticalException(f'There is no problem with Id = {userId}')
             stands = cfSession.get(
                 f'https://codeforces.com/api/contest.standings?contestId={contestId}&from=1&count=10&showUnofficial=true').json()['result']
             if stands['contest']['phase'].lower() != 'finished':
-                raise CriticalException(
-                    f'The contest is not finished yet, so can\'t download any solutions yet')
+                raise CriticalException(f'The contest is not finished yet, so can\'t download any solutions yet')
             ProblemSln._parseAndstoreSubmissionSln(
                 contestId, _findAcceptedSub(contestId, problemIdx, stands), pid)
             return ProblemSln(pid)
@@ -373,37 +346,31 @@ def cmd(args: argparse.Namespace) -> bool:
 
 
 def addParser(p: argparse._SubParsersAction):
-    pAddProblem = p.add_parser(
-        'addProblem', description='Adds a on-cf problem to the db.')
+    pAddProblem = p.add_parser('addProblem', description='Adds a on-cf problem to the db.')
     pAddProblem.add_argument('problemId', help='Id of the new problem to add.')
 
-    pCFAddProblem = p.add_parser(
-        'cfAddProblem', description='Adds a cf problem or contest to the db, but doesn\'t download the cases or anything.')
-    pCFAddProblem.add_argument(
-        'url', help='Url of the problem or contest to add, but link must be from the contest not the problem set.')
+    pCFAddProblem = p.add_parser('cfAddProblem',
+                                 description='Adds a cf problem or contest to the db, but doesn\'t download the cases or anything.')
+    pCFAddProblem.add_argument('url',
+                               help='Url of the problem or contest to add, but link must be from the contest not the problem set.')
     pCFAddProblemIdsGroup = pCFAddProblem.add_mutually_exclusive_group()
-    pCFAddProblemIdsGroup.add_argument(
-        '--contestId', help='In case the its a contest url this argument will prefix all of the contest problems ids, by default it will be the contest id.')
-    pCFAddProblemIdsGroup.add_argument(
-        '--problemId', help='In case the its a problem url this argument will be the id of the new problem, by default its ContestId+ProblemIdx.')
+    pCFAddProblemIdsGroup.add_argument('--contestId',
+                                       help='In case the its a contest url this argument will prefix all of the contest problems ids, by default it will be the contest id.')
+    pCFAddProblemIdsGroup.add_argument('--problemId',
+                                       help='In case the its a problem url this argument will be the id of the new problem, by default its ContestId+ProblemIdx.')
 
-    pCFLoadTestSet = p.add_parser(
-        'cfLoadTestset', description='Loads a CF problem or contest test set from CF and stores it in db.')
+    pCFLoadTestSet = p.add_parser('cfLoadTestset',
+                                  description='Loads a CF problem or contest test set from CF and stores it in db.')
     pCFLoadTestSetIdsGroup = pCFLoadTestSet.add_mutually_exclusive_group(
         required=True)
-    pCFLoadTestSetIdsGroup.add_argument(
-        '--contestId', help='Id of the contest to load test sets for all the problems that belong to it in the db.')
-    pCFLoadTestSetIdsGroup.add_argument(
-        '--problemId', help='Id of the problem to load its test set.')
-    pCFLoadTestSet.add_argument('--transformer', help='A program that will be apply a transformation on each test case for instance to salvage what you can from multiple case test cases, it will receive each test case input and output seperated by --seperator and its supposed to print the same. In case nothing can be salvaged just print empty lines.')
+    pCFLoadTestSetIdsGroup.add_argument('--contestId',
+                                        help='Id of the contest to load test sets for all the problems that belong to it in the db.')
+    pCFLoadTestSetIdsGroup.add_argument('--problemId', help='Id of the problem to load its test set.')
+    pCFLoadTestSet.add_argument('--transformer',
+                                help='A program that will be apply a transformation on each test case for instance to salvage what you can from multiple case test cases, it will receive each test case input and output seperated by --seperator and its supposed to print the same. In case nothing can be salvaged just print empty lines.')
 
-    pLoadTest = p.add_parser(
-        'loadTestset', description='loads a non-CF problem test set from a file and stores it in db.')
-    pLoadTest.add_argument(
-        'problemId', help='Id of the problem to load its test sets.')
-    pLoadTest.add_argument(
-        'setPath', help='path of the set file to parse and load.')
-    pLoadTest.add_argument(
-        'IOSeperator', help='The seperator of a single case input from output.')
-    pLoadTest.add_argument(
-        '--testsSeperator', help='The seperator of different test cases.')
+    pLoadTest = p.add_parser('loadTestset', description='loads a non-CF problem test set from a file and stores it in db.')
+    pLoadTest.add_argument('problemId', help='Id of the problem to load its test sets.')
+    pLoadTest.add_argument('setPath', help='path of the set file to parse and load.')
+    pLoadTest.add_argument('IOSeperator', help='The seperator of a single case input from output.')
+    pLoadTest.add_argument('--testsSeperator', help='The seperator of different test cases.')
