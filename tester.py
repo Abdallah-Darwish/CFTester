@@ -26,7 +26,7 @@ class TestResult:
 
     @staticmethod
     def runTest(input: str, answer: str, exe: list, testId: str = None, validator: list = None, validatorSep: str = None, validatorAdditionalData: str = None):
-        """validator will receive input, output, answer and additional info all seperated by --seperator.
+        """validator will receive input, output, answer and additional info all separated by --seperator.
         If answer is None or a whitespace then a validator must be provided"""
         if (answer == None or str.isspace(answer)) and validator == None:
             raise CriticalException('Parameter "answer" can\'t be None or a whitespace without providing a validator.')
@@ -128,7 +128,7 @@ def stressTest(sourcePath: str, n: int, generatorPath: str, outputPath: str, val
     for i in range(1, n + 1):
         print(f'Test case #{i}: ', end='')
         genProc = subprocess.run(gen, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True)
-        gpo = compiler.splitOnLine(_sep, genProc.stdout, 3)
+        gpo = genProc.stdout.split(_sep, 3)
         sln = gpo[1] if sol == None else subprocess.run(sol, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True, input=gpo[0]).stdout.strip()
         t = TestResult.runTest(gpo[0], sln, exe, validator=val, validatorSep=_sep, validatorAdditionalData=gpo[2])
         if t.passed == False:
@@ -192,19 +192,19 @@ def addParser(p: argparse._SubParsersAction):
     pCFStressTest.add_argument('problemId', help='Id of CF problem to stress test.')
     pCFStressTest.add_argument('N', help='Number of times to stress test your solution.', type=int)
     pCFStressTest.add_argument('source', help='Path to your solution file.')
-    pCFStressTest.add_argument('generator', help='Path to your generator file, it must print the test case, answer(mostly empty), additional data for validator(can be empty) all seperated by argument --seperator.')
-    pCFStressTest.add_argument('--validator', help='Path to your validator file, it will receive test case, your solution answer, CF solution answer, additional data from generator(can be empty) all seperated by argument --seperator.\nIts exit code should be 0 if answer is correct and non-zero otherwise also in case of not accepted STDOUT can contain a comment.')
+    pCFStressTest.add_argument('generator', help='Path to your generator file, it must print the test case, answer(mostly empty), additional data for validator(can be empty) all separated by argument --seperator.')
+    pCFStressTest.add_argument('--validator', help='Path to your validator file, it will receive test case, your solution answer, CF solution answer, additional data from generator(can be empty) all separated by argument --seperator.\nIts exit code should be 0 if answer is correct and non-zero otherwise also in case of not accepted STDOUT can contain a comment.')
 
     pStressTest = p.add_parser('stressTest', description='Stress test a non-CF problem, by feeding it your generator test case after that it will feed case and output to validator.')
     pStressTest.add_argument('problemId', help='Id of CF problem to stress test.')
     pStressTest.add_argument('N', help='Number of times to stress test your solution.', type=int)
     pStressTest.add_argument('source', help='Path to your solution file.')
-    pStressTest.add_argument('generator', help='Path to your generator file, it must print the test case, answer(can\'t be empty unless you provided a validator), additional data for validator(can be empty) all seperated by argument --seperator.')
-    pStressTest.add_argument('--validator', help='Path to your validator file, it will receive test case, your solution answer, generator answer(can be empty), additional data from generator(can be empty) all seperated by argument --seperator.\nIts exit code should be 0 if answer is correct and non-zero otherwise.')
+    pStressTest.add_argument('generator', help='Path to your generator file, it must print the test case, answer(can\'t be empty unless you provided a validator), additional data for validator(can be empty) all separated by argument --seperator.')
+    pStressTest.add_argument('--validator', help='Path to your validator file, it will receive test case, your solution answer, generator answer(can be empty), additional data from generator(can be empty) all separated by argument --seperator.\nIts exit code should be 0 if answer is correct and non-zero otherwise.')
 
     pTest = p.add_parser('test', description='Runs a group of saved tests in the db against your solution.')
     pTest.add_argument('problemId', help='Id of the problem to test.')
     pTest.add_argument('source', help='Path to your solution file.')
     pTest.add_argument('--cfTests', help="Numbers of CF tests you want to run seperated by a comma and can include ranges and non-existing tasks numbers, ex: 1,2,4-6,10,13. If omitted then all will be tested.")
     pTest.add_argument('--uTests', help="Numbers of User tests you want to run seperated by a comma and can include ranges and non-existing tasks numbers, ex: 1,2,4-6,10,13. If omitted then all will be tested.")
-    pTest.add_argument('--validator', help='Path to your validator file, it will receive test case, your solution answer, expected answer, additional data(empty for now) all seperated by argument --seperator.\nIts exit code should be 0 if answer is correct and non-zero otherwise.')
+    pTest.add_argument('--validator', help='Path to your validator file, it will receive test case, your solution answer, expected answer, additional data(empty for now) all separated by argument --seperator.\nIts exit code should be 0 if answer is correct and non-zero otherwise.')

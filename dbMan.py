@@ -196,8 +196,7 @@ class TestSet:
                 if trans != None:
                     transInput = f'{ipt}\n{transSep}\n{opt}'
                     try:
-                        ipt, opt = compiler.splitOnLine(transSep, subprocess.run(
-                            trans, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True, input=transInput).stdout, 2)
+                        ipt, opt = subprocess.run(trans, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=True, input=transInput).stdout.split(transSep)
                     except subprocess.CalledProcessError as er:
                         raise CriticalException(
                             'Case transformer exited with non-zero code.')
@@ -361,10 +360,9 @@ def cmd(args: argparse.Namespace) -> bool:
     if args.subparserName == 'loadTestset':
         with open(args.setPath, 'r') as st:
             if args.testsSeperator:
-                tests = [compiler.splitOnLine(args.IOSeperator, t) for t in compiler.splitOnLine(
-                    args.testsSeperator, st.read())]
+                tests = [t.split(args.IOSeperator) for t in st.read().split(args.testsSeperator)]
             else:
-                tests = [compiler.splitOnLine(args.IOSeperator, st.read())]
+                tests = [st.read().split(args.IOSeperator)]
         if len(tests) > 0:
             x = TestSet.loadTestSet(args.problemId, tests)
             if x[0] == x[1]:

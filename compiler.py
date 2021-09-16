@@ -9,7 +9,7 @@ import hashlib
 import dbMan
 import shutil
 import multiprocessing
-
+import sys
 
 tempBinariesDirectory = os.path.join(os.getcwd(), 'TempBinaries')
 gppCompiler = 'g++'
@@ -36,8 +36,7 @@ def _compile_new_source(srcPath: str, srcHash: str) -> List[str]:
         while True:
             for i in range(os.cpu_count()):
                 projectName = f'project{i}'
-                projectPath = os.path.join(
-                    tempBinariesDirectory, 'CSharpProjects', projectName)
+                projectPath = os.path.join(tempBinariesDirectory, 'CSharpProjects', projectName)
                 if os.path.exists(projectPath) == False:
                     if subprocess.run(['dotnet', 'new', 'console', '-o', projectPath], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).returncode != 0:
                         raise CriticalException(f"Couldn't create a new C# project at '{projectPath}'.")
@@ -56,9 +55,9 @@ def _compile_new_source(srcPath: str, srcHash: str) -> List[str]:
         programPath = os.path.join(projectPath, 'program.cs')
         shutil.copyfile(srcPath, programPath, follow_symlinks=True)
         csprojPath = os.path.join(projectPath, f'{projectName}.csproj')
-        outputDir = os.path.join(
-            tempBinariesDirectory, f'{time.time_ns()}xyz{random.randint(1, 9999999)}')
-        if subprocess.run(['dotnet', 'build', '-c', 'Release', '-f', DOTNET_FRAMEWORK, '-o', outputDir, csprojPath], text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).returncode != 0:
+        outputDir = os.path.join(tempBinariesDirectory, f'{time.time_ns()}xyz{random.randint(1, 9999999)}')
+        if subprocess.run(['dotnet', 'build', '-c', 'Release', '-f', DOTNET_FRAMEWORK, '-o', outputDir, csprojPath],
+                text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT).returncode != 0:
             os.remove(lockPath)
             raise CriticalException(f"Couldn't build project '{projectPath}'.")
         os.remove(lockPath)
@@ -76,7 +75,7 @@ def compile(srcPath: str) -> List[str]:
     if os.path.isfile(srcPath) == False:
         raise FileNotFoundError(errno.ENOENT, os.strerror(errno.ENOENT), srcPath)
     ext = os.path.splitext(srcPath)[1].lower()
-    if ext == '.exe':
+    if ext == '.exe' or ext == '.out':
         return [srcPath]
     elif ext == '.py':
         return ['python', srcPath]
@@ -93,22 +92,3 @@ def compile(srcPath: str) -> List[str]:
             con.execute('DELETE FROM Executable WHERE sourceHash = :srcHash', {'srcHash': srcHash})
 
     return _compile_new_source(srcPath, srcHash)
-
-def splitOnLine(sep:str, ipt: str = None, minLen = 0) -> List[str]:
-    if ipt == None:
-        ipt = sys.stdin.read()
-    ipt = ipt.splitlines(keepends=False)
-    res = []
-    cstr = ''
-    sepCnt = 0
-    for ln in ipt:
-        if ln == sep:
-            res.append(cstr.strip())
-            cstr = ''
-        else:
-            if len(cstr) > 0: cstr += '\n'
-            cstr += ln
-    if cstr != '': res.append(cstr.strip())
-    if len(res) < sepCnt + 1: res.extend([''] * ((sepCnt + 1)- len(res)))
-    if len(res) < minLen: res.extend([''] * (minLen - len(res)))
-    return res
